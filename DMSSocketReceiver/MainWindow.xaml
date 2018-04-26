@@ -1,0 +1,27 @@
+﻿<Window x:Class="DMSSocketReceiver.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:DMSSocketReceiver"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="350" Width="525" Closing="Window_Closing">
+    <DockPanel>
+        <GroupBox x:Name="groupBox" Header="GroupBox" Margin="0" DockPanel.Dock="Top">
+            <DockPanel Margin="0,0,-2,0">
+                <Label x:Name="lblMetadataDir" Content="Basisverzeichnis:" VerticalAlignment="Top" Target="{Binding ElementName=edtMetadataDir, Mode=OneWay}"/>
+                <TextBox x:Name="edtMetadataDir" TextWrapping="Wrap"/>
+            </DockPanel>
+        </GroupBox>
+        <Menu x:Name="menu" VerticalAlignment="Top" HorizontalAlignment="Left" DockPanel.Dock="Top"/>
+        <StackPanel Margin="0" HorizontalAlignment="Left" Width="109">
+            <DockPanel LastChildFill="False" Height="25">
+                <Label x:Name="lblPort" Margin="0" Content="Port:" Target="{Binding ElementName=edtPort, Mode=OneWay}"/>
+                <TextBox x:Name="edtPort" TextWrapping="Wrap" Text="TextBox"/>
+            </DockPanel>
+            <Button x:Name="btnStartServer" Content="Server starten" Click="btnStartServer_Click"/>
+            <Button x:Name="btnStopServer" Content="Server stoppen" Click="btnStopServer_Click"/>
+        </StackPanel>
+        <TextBox x:Name="textBox" TextWrapping="Wrap" Text="TextBox" Margin="0,0,0,10"/>
+    </DockPanel>
+</Window>
