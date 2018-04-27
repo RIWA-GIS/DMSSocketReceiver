@@ -60,5 +60,10 @@ namespace DMSSocketReceiver
             btnStopServer_Click(null, null);
             saveSettings();
         }
+
+        private void btnClearLog_Click(object sender, RoutedEventArgs e)
+        {
+            textBox.Clear();
+        }
     }
 }

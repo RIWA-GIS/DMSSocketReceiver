@@ -7,21 +7,15 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525" Closing="Window_Closing">
     <DockPanel>
-        <GroupBox x:Name="groupBox" Header="GroupBox" Margin="0" DockPanel.Dock="Top">
-            <DockPanel Margin="0,0,-2,0">
-                <Label x:Name="lblMetadataDir" Content="Basisverzeichnis:" VerticalAlignment="Top" Target="{Binding ElementName=edtMetadataDir, Mode=OneWay}"/>
-                <TextBox x:Name="edtMetadataDir" TextWrapping="Wrap"/>
-            </DockPanel>
-        </GroupBox>
-        <Menu x:Name="menu" VerticalAlignment="Top" HorizontalAlignment="Left" DockPanel.Dock="Top"/>
         <StackPanel Margin="0" HorizontalAlignment="Left" Width="109">
-            <DockPanel LastChildFill="False" Height="25">
-                <Label x:Name="lblPort" Margin="0" Content="Port:" Target="{Binding ElementName=edtPort, Mode=OneWay}"/>
-                <TextBox x:Name="edtPort" TextWrapping="Wrap" Text="TextBox"/>
+            <DockPanel Margin="3">
+                <Label x:Name="lblPort" Margin="3" Content="Port:" Target="{Binding ElementName=edtPort, Mode=OneWay}"/>
+                <TextBox x:Name="edtPort" TextWrapping="Wrap" Text="TextBox" Margin="3"/>
             </DockPanel>
-            <Button x:Name="btnStartServer" Content="Server starten" Click="btnStartServer_Click"/>
-            <Button x:Name="btnStopServer" Content="Server stoppen" Click="btnStopServer_Click"/>
+            <Button x:Name="btnStartServer" Content="Server starten" Click="btnStartServer_Click" Margin="3"/>
+            <Button x:Name="btnStopServer" Content="Server stoppen" Click="btnStopServer_Click" Margin="3"/>
+            <Button x:Name="btnClearLog" Content="Log leeren" Margin="3" Click="btnClearLog_Click"/>
         </StackPanel>
-        <TextBox x:Name="textBox" TextWrapping="Wrap" Text="TextBox" Margin="0,0,0,10"/>
+        <TextBox x:Name="textBox" TextWrapping="Wrap" Text="TextBox" Margin="10" ScrollViewer.CanContentScroll="True" VerticalScrollBarVisibility="Auto"/>
     </DockPanel>
 </Window>
