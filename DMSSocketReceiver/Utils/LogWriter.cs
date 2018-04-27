@@ -28,6 +28,7 @@ namespace DMSSocketReceiver.Utils
         private void UpdateText(string message)
         {
             textBlock1.AppendText(message + "\n");
+            textBlock1.ScrollToEnd();
         }
     }
 }
