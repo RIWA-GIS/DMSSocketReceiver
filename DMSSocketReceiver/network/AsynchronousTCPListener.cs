@@ -1,5 +1,5 @@
 ﻿using DMSSocketReceiver.dmshandler;
-using Newtonsoft.Json;
+using DMSSocketReceiver.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,19 +20,26 @@ namespace DMSSocketReceiver.network
 
         private TcpListener tcpListener;
 
-        public AsynchronousTCPListener(LogWriter writerParam, IDMSHandler handler) : base(writerParam, handler)
+        public AsynchronousTCPListener(ILogWriter writerParam, IDMSHandler handler) : base(writerParam, handler)
         {
 
         }
 
 
 
-        public override void StartListening(int port)
+        public override void StartListeningInternal(int port)
         {
             if (runTread)
+            {
                 return;
+            }
 
-            IPEndPoint localEndPointL = new IPEndPoint(IPAddress.Any, port);
+            if (port < 1 || port > 65535)
+            {
+                throw new ArgumentOutOfRangeException("port", "port must be between 1 and 65535");
+            }
+
+            IPEndPoint localEndPointL = new IPEndPoint(IPAddress.Any, port % 65535);
             tcpListener = new TcpListener(localEndPointL);
             tcpListener.Start();
 
@@ -43,7 +50,7 @@ namespace DMSSocketReceiver.network
             runTread = true;
         }
 
-        public override void StopListening()
+        public override void StopListeningInternal()
         {
             runTread = false;
             if (tcpListener != null)
@@ -60,7 +67,7 @@ namespace DMSSocketReceiver.network
             {
                 try
                 {
-                    writer.WriteMessage("Waiting for a connection... ");
+                    Writer.WriteMessage("Waiting for a connection... ");
 
                     // Perform a blocking call to accept requests.
                     // You could also user server.AcceptSocket() here.
@@ -71,14 +78,14 @@ namespace DMSSocketReceiver.network
                     }
                     catch (SocketException sockex)
                     {
-                        writer.WriteMessage(String.Format("sockex: {0}", sockex.Message));
+                        Writer.WriteMessage(String.Format("sockex: {0}", sockex.Message));
                         client = null;
                     }
                     if (client != null)
                     {
                         using (client)
                         {
-                            writer.WriteMessage("Connected!");
+                            Writer.WriteMessage("Connected!");
 
                             // Get a stream object for reading and writing
                             using (NetworkStream networkStream = client.GetStream())
@@ -90,47 +97,46 @@ namespace DMSSocketReceiver.network
                                 {
                                     int l = stream.ReadInt32();
                                     byte[] byteContent = stream.ReadBytes(l);
-                                    ret["receivedcontent.base64"] = byteContent;
                                     content = DEFAULT_ENCODING.GetString(byteContent);
-                                    ret["receivedcontent.string"] = content;
-                                    writer.WriteMessage(String.Format("received: '{0}'", content));
+                                    Writer.WriteMessage(String.Format("received: '{0}'", content));
                                 }
                                 catch (IOException ioex)
                                 {
-                                    writer.WriteMessage(String.Format("unable to receive message: {0}", ioex.Message));
+                                    Writer.WriteMessage(String.Format("unable to receive message: {0}", ioex.Message));
                                     content = "";
                                 }
                                 if (!String.IsNullOrEmpty(content))
                                 {
-                                    IDictionary<String, object> tmpDir = HandleContent(content);
+                                    IDictionary<String, object> tmpDir
+                                        = HandleContent(content);
                                     foreach (var currEntry in tmpDir)
+                                    {
                                         ret.Add(currEntry);
+                                    }
                                 }
                                 else
                                 {
-                                    ret["status"] = "FAIL";
-                                    ret["errortext"] = "empty message received";
+                                    ret[KEY_STATUS] = "FAIL";
+                                    ret[KEY_ERRORTEXT] = "empty message received";
                                 }
-                                byte[] v = DEFAULT_ENCODING.GetBytes(JsonConvert.SerializeObject(ret));
+                                byte[] v = DEFAULT_ENCODING.GetBytes(Newtonsoft.Json.JsonConvert.SerializeObject(ret));
                                 networkStream.Write(v, 0, v.Length);
-
-                                stream.Close();
-                                networkStream.Close();
                             }
-                            client.Close();
                         }
                         tcpListener.Start();
                     }
                 }
                 catch (Exception e)
                 {
-                    writer.WriteMessage(e.ToString());
-                    writer.WriteMessage("Waiting for a connection... Err!!");
+                    Writer.WriteMessage(e.ToString());
+                    Writer.WriteMessage("Waiting for a connection... Err!!");
                 }
             }
-            writer.WriteMessage("Waiting for a connection... DONE!");
+            Writer.WriteMessage("Waiting for a connection... DONE!");
             if (tcpListener != null)
+            {
                 tcpListener.Stop();
+            }
         }
 
     }

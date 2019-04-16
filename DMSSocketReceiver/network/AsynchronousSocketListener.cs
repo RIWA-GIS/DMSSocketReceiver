@@ -1,4 +1,5 @@
 ﻿using DMSSocketReceiver.dmshandler;
+using DMSSocketReceiver.Utils;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -20,17 +21,19 @@ namespace DMSSocketReceiver.network
 
         private Socket listener;
 
-        public AsynchronousSocketListener(LogWriter writerParam, IDMSHandler handler): base(writerParam, handler)
+        public AsynchronousSocketListener(ILogWriter writerParam, IDMSHandler handler) : base(writerParam, handler)
         {
 
         }
 
 
 
-        public override void StartListening(int port)
+        public override void StartListeningInternal(int port)
         {
             if (runTread)
+            {
                 return;
+            }
 
             // Establish the local endpoint for the socket.  
             // The DNS name of the computer  
@@ -44,7 +47,7 @@ namespace DMSSocketReceiver.network
             listener.Bind(localEndPoint);
             listener.Listen(100);
 
-            writer.WriteMessage("Waiting for a connection on port " + port);
+            Writer.WriteMessage("Waiting for a connection on port " + port);
             runTread = true;
             lThread = new Thread(run);
             lThread.Start();
@@ -72,18 +75,18 @@ namespace DMSSocketReceiver.network
             }
             catch (Exception e)
             {
-                writer.WriteMessage(e.ToString());
+                Writer.WriteMessage(e.ToString());
             }
         }
 
-        public override void StopListening()
+        public override void StopListeningInternal()
         {
             runTread = false;
             if (listener != null)
             {
                 listener.Close();
                 listener = null;
-                    allDone.Set();
+                allDone.Set();
             }
         }
 
@@ -120,8 +123,6 @@ namespace DMSSocketReceiver.network
 
             if (bytesRead > 0)
             {
-                //                BinaryReader rd = new BinaryReader();
-                //                rd.
                 // There  might be more data, so store the data received so far.  
                 state.sb.Append(DEFAULT_ENCODING.GetString(
                     state.buffer, 0, bytesRead));
@@ -166,7 +167,7 @@ namespace DMSSocketReceiver.network
 
                 // Complete sending the data to the remote device.  
                 int bytesSent = handler.EndSend(ar);
-                writer.WriteMessage(String.Format("Sent {0} bytes to client.", bytesSent));
+                Writer.WriteMessage(String.Format("Sent {0} bytes to client.", bytesSent));
 
                 handler.Shutdown(SocketShutdown.Both);
                 handler.Close();
@@ -174,7 +175,7 @@ namespace DMSSocketReceiver.network
             }
             catch (Exception e)
             {
-                writer.WriteMessage(e.ToString());
+                Writer.WriteMessage(e.ToString());
             }
         }
 

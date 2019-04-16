@@ -3,9 +3,9 @@ using System.Configuration;
 
 namespace DMSSocketReceiver.Utils
 {
-    class ConfigurationUtils
+    public class ConfigurationUtils
     {
-        public static string readAppSetting(string key, string defaultValue = "")
+        public static string ReadAppSetting(string key, string defaultValue = "")
         {
             var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var settings = configFile.AppSettings.Settings;
@@ -13,7 +13,7 @@ namespace DMSSocketReceiver.Utils
             return result;
         }
 
-        public static void saveAppSetting(string key, string value)
+        public static void SaveAppSetting(string key, string value)
         {
             var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             var settings = configFile.AppSettings.Settings;
