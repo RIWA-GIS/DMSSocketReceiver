@@ -10,5 +10,10 @@
         /// </summary>
         /// <param name="message">the message to output</param>
         void WriteMessage(string message);
+
+        /// <summary>
+        /// writer is closed.
+        /// </summary>
+        void Close();
     }
 }

@@ -7,9 +7,16 @@ namespace DMSSocketReceiver.Utils
 {
     public class ConsoleLogWriter : ILogWriter
     {
+        public void Close()
+        {
+            Console.WriteLine("writing done.");
+        }
+
         public void WriteMessage(string message)
         {
             Console.WriteLine(message);
         }
+
+        
     }
 }

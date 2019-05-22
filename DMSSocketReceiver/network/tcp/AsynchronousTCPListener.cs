@@ -28,19 +28,19 @@ namespace DMSSocketReceiver.network.tcp
 
         }
 
-
-
         public override void StartListeningInternal(int port)
         {
             if (runTread)
+            {
                 return;
+            }
 
             IPEndPoint localEndPointL = new IPEndPoint(IPAddress.Any, port);
             tcpListener = new TcpListener(localEndPointL);
             tcpListener.Start();
 
 
-            lThread2 = new Thread(run2);
+            lThread2 = new Thread(Run2);
             runTread = true;
             lThread2.Start();
         }
@@ -56,14 +56,12 @@ namespace DMSSocketReceiver.network.tcp
         }
 
 
-        internal void run2()
+        internal void Run2()
         {
             while (runTread)
             {
                 try
                 {
-                    Writer.WriteMessage("Waiting for a connection... ");
-
                     // Perform a blocking call to accept requests.
                     // You could also user server.AcceptSocket() here.
                     TcpClient client;
@@ -80,58 +78,71 @@ namespace DMSSocketReceiver.network.tcp
                     {
                         using (client)
                         {
-                            Writer.WriteMessage(string.Format("Connected from '{0}'.", ((IPEndPoint) client.Client.RemoteEndPoint).Address));
-
-                            // Get a stream object for reading and writing
-                            using (NetworkStream networkStream = client.GetStream())
-                            using (BinaryReader stream = new BinaryReader(networkStream, DEFAULT_ENCODING))
+                            OnCommandReceivedEvent();
+                            try
                             {
-                                IDictionary<string, object> ret = new Dictionary<string, object>();
-                                String content;
-                                try
-                                {
-                                    int l = stream.ReadInt32();
-                                    byte[] byteContent = stream.ReadBytes(l);
-                                    content = DEFAULT_ENCODING.GetString(byteContent);
-                                    LOG.Debug(String.Format("received: '{0}'", content));
-                                }
-                                catch (IOException ioex)
-                                {
-                                    LOG.Error(String.Format("error reading stream: {0}", ioex.Message), ioex);
-                                    Writer.WriteMessage(String.Format("unable to receive message: {0}", ioex.Message));
-                                    content = "";
-                                }
-                                if (!String.IsNullOrEmpty(content))
-                                {
-                                    IDictionary<String, object> tmpDir = HandleContent(content);
-                                    foreach (var currEntry in tmpDir)
-                                        ret.Add(currEntry);
-                                }
-                                else
-                                {
-                                    ret[KEY_STATUS] = "FAIL";
-                                    ret[KEY_ERRORTEXT] = "empty message received";
-                                }
-                                byte[] v = DEFAULT_ENCODING.GetBytes(JsonConvert.SerializeObject(ret));
-                                networkStream.Write(v, 0, v.Length);
+                                Writer.WriteMessage(string.Format("Connected from '{0}'.", ((IPEndPoint)client.Client.RemoteEndPoint).Address));
 
-                                stream.Close();
-                                networkStream.Close();
+                                // Get a stream object for reading and writing
+                                using (NetworkStream networkStream = client.GetStream())
+                                using (BinaryReader stream = new BinaryReader(networkStream, DEFAULT_ENCODING))
+                                {
+                                    IDictionary<string, object> ret = new Dictionary<string, object>();
+                                    String content;
+                                    try
+                                    {
+                                        int l = stream.ReadInt32();
+                                        byte[] byteContent = stream.ReadBytes(l);
+                                        content = DEFAULT_ENCODING.GetString(byteContent);
+                                        LOG.Debug(String.Format("received: '{0}'", content));
+                                    }
+                                    catch (IOException ioex)
+                                    {
+                                        OnCommandErrorEvent(ioex);
+                                        LOG.Error(String.Format("error reading stream: {0}", ioex.Message), ioex);
+                                        Writer.WriteMessage(String.Format("unable to receive message: {0}", ioex.Message));
+                                        content = "";
+                                    }
+                                    if (!String.IsNullOrEmpty(content))
+                                    {
+                                        IDictionary<String, object> tmpDictionary = HandleContent(content);
+                                        foreach (var currEntry in tmpDictionary)
+                                        {
+                                            ret.Add(currEntry);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        ret[KEY_STATUS] = "FAIL";
+                                        ret[KEY_ERRORTEXT] = "empty message received";
+                                    }
+                                    byte[] v = DEFAULT_ENCODING.GetBytes(JsonConvert.SerializeObject(ret));
+                                    networkStream.Write(v, 0, v.Length);
+
+                                    stream.Close();
+                                    networkStream.Close();
+                                }
+                            }
+                            finally
+                            {
+                                OnCommandFinishedEvent();
                             }
                             client.Close();
                         }
-                        tcpListener.Start();
                     }
+                    tcpListener.Start();
                 }
                 catch (Exception e)
                 {
-                    Writer.WriteMessage(e.ToString());
-                    Writer.WriteMessage("Waiting for a connection... Err!!");
+                    OnCommandErrorEvent(e);
+                    Writer.WriteMessage("Error waiting connection: " + e.ToString());
+                    LOG.Error("errro waiting connection: " + e.ToString(), e);
                 }
             }
-            Writer.WriteMessage("Waiting for a connection... DONE!");
             if (tcpListener != null)
+            {
                 tcpListener.Stop();
+            }
         }
 
     }

@@ -11,8 +11,10 @@ using System.Threading;
 namespace DMSSocketReceiver.network
 {
 
+
     public class AsynchronousTCPListener : AbstractDMSListener
     {
+        private static log4net.ILog LOG = log4net.LogManager.GetLogger(typeof(AsynchronousTCPListener));
         private static Encoding DEFAULT_ENCODING = Encoding.UTF8;
         private Thread lThread2;
         // Thread signal.  
@@ -44,7 +46,7 @@ namespace DMSSocketReceiver.network
             tcpListener.Start();
 
 
-            lThread2 = new Thread(run2);
+            lThread2 = new Thread(Run2);
             lThread2.Start();
 
             runTread = true;
@@ -61,13 +63,13 @@ namespace DMSSocketReceiver.network
         }
 
 
-        internal void run2()
+        internal void Run2()
         {
             while (runTread)
             {
                 try
                 {
-                    Writer.WriteMessage("Waiting for a connection... ");
+                    LOG.Debug("Waiting for a connection on port "+tcpListener);
 
                     // Perform a blocking call to accept requests.
                     // You could also user server.AcceptSocket() here.
@@ -78,14 +80,14 @@ namespace DMSSocketReceiver.network
                     }
                     catch (SocketException sockex)
                     {
-                        Writer.WriteMessage(String.Format("sockex: {0}", sockex.Message));
                         client = null;
+                        throw sockex;
                     }
                     if (client != null)
                     {
                         using (client)
                         {
-                            Writer.WriteMessage("Connected!");
+                            Writer.WriteMessage(string.Format("Connected from '{0}'.", ((IPEndPoint)client.Client.RemoteEndPoint).Address));
 
                             // Get a stream object for reading and writing
                             using (NetworkStream networkStream = client.GetStream())
@@ -98,7 +100,7 @@ namespace DMSSocketReceiver.network
                                     int l = stream.ReadInt32();
                                     byte[] byteContent = stream.ReadBytes(l);
                                     content = DEFAULT_ENCODING.GetString(byteContent);
-                                    Writer.WriteMessage(String.Format("received: '{0}'", content));
+                                    LOG.Debug(String.Format("received: '{0}'", content));
                                 }
                                 catch (IOException ioex)
                                 {
@@ -128,8 +130,8 @@ namespace DMSSocketReceiver.network
                 }
                 catch (Exception e)
                 {
-                    Writer.WriteMessage(e.ToString());
-                    Writer.WriteMessage("Waiting for a connection... Err!!");
+                    Writer.WriteMessage(string.Format("Fehler beim Warten auf Verbindungen: "+e.Message));
+                    LOG.Error(string.Format("Fehler beim Warten auf Verbindungen: " + e.Message), e);
                 }
             }
             Writer.WriteMessage("Waiting for a connection... DONE!");

@@ -34,6 +34,10 @@ namespace DMSSocketReceiver.network
         private readonly Thread trWorker;
         private bool running = true;
 
+        public event EventHandler CommandReceivedEvent;
+        public event EventHandler CommandFinishedEvent;
+        public event EventHandler CommandErrorEvent;
+
         protected AbstractDMSListener(ILogWriter writerParam, IDMSHandler handler)
         {
             this.Handler = handler;
@@ -49,74 +53,83 @@ namespace DMSSocketReceiver.network
                       IDictionary<string, object> ret = nextSessionDesc.ReturnMap;
                       IDictionary<string, object> payload = new Dictionary<string, object>();
                       ret[KEY_PAYLOAD] = payload;
-                      switch (nextSessionDesc.Command)
+                      try
                       {
-                          case "insert":
-                              {
-                                  string filepath = input_payload[KEY_FILEPATH];
-                                  string originKey = input_payload[KEY_ORIGINKEY];
-                                  IDictionary<String, String> metadata = ReadMetadata(input_payload);
-
-                                  Writer.WriteMessage(String.Format("inserting; file '{0}', originkey: '{1}'", filepath, originKey));
-                                  DMSDocument selDocument = Handler.InsertDocument(originKey, filepath, metadata);
-                                  if (selDocument != null)
+                          switch (nextSessionDesc.Command)
+                          {
+                              case "insert":
                                   {
-                                      Writer.WriteMessage(String.Format("returned document '{0}'", selDocument));
-                                      payload[KEY_DMSID] = selDocument.id;
-                                      payload[KEY_DOCUMENTNAME] = selDocument.name;
-                                      payload[KEY_ORIGINKEY] = originKey;
+                                      string filepath = input_payload[KEY_FILEPATH];
+                                      string originKey = input_payload[KEY_ORIGINKEY];
+                                      IDictionary<String, String> metadata = ReadMetadata(input_payload);
+
+                                      Writer.WriteMessage(String.Format("inserting; file '{0}', originkey: '{1}'", filepath, originKey));
+                                      DMSDocument selDocument = Handler.InsertDocument(originKey, filepath, metadata);
+                                      if (selDocument != null)
+                                      {
+                                          Writer.WriteMessage(String.Format("returned document '{0}'", selDocument));
+                                          payload[KEY_DMSID] = selDocument.Id;
+                                          payload[KEY_DOCUMENTNAME] = selDocument.Name;
+                                          payload[KEY_ORIGINKEY] = originKey;
+                                          ret[KEY_STATUS] = KEY_STATUS_OK;
+                                      }
+                                      else
+                                      {
+                                          ret[KEY_STATUS] = KEY_STATUS_CANCEL;
+                                      }
+                                      nextSessionDesc.Status = SessionDesc.SessionStatus.DONE;
+                                  }
+                                  break;
+                              case "attach":
+                                  {
+                                      string originKey = input_payload[KEY_ORIGINKEY];
+                                      IDictionary<String, String> metadata = ReadMetadata(input_payload);
+
+                                      Writer.WriteMessage(String.Format("attaching; originkey: '{0}'", originKey));
+                                      DMSDocument selDocument = Handler.AttachDocument(originKey, metadata);
+                                      if (selDocument != null)
+                                      {
+                                          Writer.WriteMessage(String.Format("returned document '{0}'", selDocument));
+                                          payload[KEY_DMSID] = selDocument.Id;
+                                          payload[KEY_DOCUMENTNAME] = selDocument.Name;
+                                          payload[KEY_ORIGINKEY] = originKey;
+                                          ret[KEY_STATUS] = KEY_STATUS_OK;
+                                      }
+                                      else
+                                      {
+                                          ret[KEY_STATUS] = KEY_STATUS_CANCEL;
+                                      }
+                                      nextSessionDesc.Status = SessionDesc.SessionStatus.DONE;
+                                  }
+                                  break;
+                              case "show":
+                                  {
+                                      string idOfFileInDMS_show = input_payload[KEY_DMSID];
+                                      string nameOfDMSDocument = input_payload[KEY_DOCUMENTNAME];
+                                      string originKey = input_payload[KEY_ORIGINKEY];
+                                      DMSDocument documentToShow = new DMSDocument(idOfFileInDMS_show, nameOfDMSDocument);
+                                      Writer.WriteMessage(String.Format("show document '{0}'", documentToShow));
+                                      Handler.ShowDocument(documentToShow);
                                       ret[KEY_STATUS] = KEY_STATUS_OK;
+                                      nextSessionDesc.Status = SessionDesc.SessionStatus.DONE;
                                   }
-                                  else
+                                  break;
+                              default:
                                   {
-                                      ret[KEY_STATUS] = KEY_STATUS_CANCEL;
-                                  }
-                                  nextSessionDesc.Status = SessionDesc.SessionStatus.DONE;
-                              }
-                              break;
-                          case "attach":
-                              {
-                                  string originKey = input_payload[KEY_ORIGINKEY];
-                                  IDictionary<String, String> metadata = ReadMetadata(input_payload);
 
-                                  Writer.WriteMessage(String.Format("attaching; originkey: '{0}'", originKey));
-                                  DMSDocument selDocument = Handler.AttachDocument(originKey, metadata);
-                                  if (selDocument != null)
-                                  {
-                                      Writer.WriteMessage(String.Format("returned document '{0}'", selDocument));
-                                      payload[KEY_DMSID] = selDocument.id;
-                                      payload[KEY_DOCUMENTNAME] = selDocument.name;
-                                      payload[KEY_ORIGINKEY] = originKey;
-                                      ret[KEY_STATUS] = KEY_STATUS_OK;
                                   }
-                                  else
-                                  {
-                                      ret[KEY_STATUS] = KEY_STATUS_CANCEL;
-                                  }
-                                  nextSessionDesc.Status = SessionDesc.SessionStatus.DONE;
-                              }
-                              break;
-                          case "show":
-                              {
-                                  string idOfFileInDMS_show = input_payload[KEY_DMSID];
-                                  string nameOfDMSDocument = input_payload[KEY_DOCUMENTNAME];
-                                  string originKey = input_payload[KEY_ORIGINKEY];
-                                  DMSDocument documentToShow = new DMSDocument(idOfFileInDMS_show, nameOfDMSDocument);
-                                  Writer.WriteMessage(String.Format("show document '{0}'", documentToShow));
-                                  Handler.ShowDocument(documentToShow);
-                                  ret[KEY_STATUS] = KEY_STATUS_OK;
-                                  nextSessionDesc.Status = SessionDesc.SessionStatus.DONE;
-                              }
-                              break;
-                          default:
-                              {
+                                  break;
+                          }
 
-                              }
-                              break;
+                      }
+                      catch (Exception ex)
+                      {
+                          LOG.Error("processing error on session " + nextSessionDesc.Key + ": " + ex.Message, ex);
+                          Writer.WriteMessage("processing error on session " + nextSessionDesc.Key + ": " + ex.Message);
+                          ret[KEY_STATUS] = "FAIL";
+                          ret[KEY_ERRORTEXT] = ex.Message;
                       }
                   }
-
-
               }
           }
         )
@@ -188,9 +201,11 @@ namespace DMSSocketReceiver.network
                     command = "unknown";
                 }
 
-                Writer.WriteMessage(String.Format("Command: {0}", command));
+
                 ret[KEY_COMMAND] = command;
                 IDictionary<string, dynamic> input_payload = ReadPayload(jsonContent.payload);
+
+                LOG.Info(String.Format("Command: {0}, Payload: {1}", command, input_payload));
                 switch (command.ToLower())
                 {
                     case "read":
@@ -267,6 +282,19 @@ namespace DMSSocketReceiver.network
             }
 
             return ret;
+        }
+
+        protected virtual void OnCommandReceivedEvent()
+        {
+            CommandReceivedEvent?.Invoke(this, new CommandEventArgs(CommandEventType.START));
+        }
+        protected virtual void OnCommandFinishedEvent()
+        {
+            CommandFinishedEvent?.Invoke(this, new CommandEventArgs(CommandEventType.FINISH));
+        }
+        protected virtual void OnCommandErrorEvent(Exception e)
+        {
+            CommandErrorEvent?.Invoke(this, new ErrorCommandEventArgs() { Error = e });
         }
 
     }
